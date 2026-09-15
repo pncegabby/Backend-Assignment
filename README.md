@@ -13,8 +13,8 @@ This API is developed with **Node.js**, **Express.js**, and **TypeScript**, back
 - [Setup & Installation Instructions](#setup--installation-instructions)
 - [Running Automated Tests](#running-automated-tests)
 - [Bonus Features](#bonus-features)
-  - [Pagination & Filtering](#pagination--filtering)
-  - [Docker Containerization](#docker-containerization)
+  - [Pagination](#1-pagination)
+  - [Docker Containerization](#2-docker-containerization)
 - [Architectural Explanation](#architectural-explanation)
 - [Challenges Faced & Solutions](#challenges-faced--solutions)
 
@@ -77,18 +77,26 @@ This API is developed with **Node.js**, **Express.js**, and **TypeScript**, back
 - `npm` (bundled with Node.js)
 
 ### Install Dependencies
-npm install 
+```bash
+npm install
+```
 
 ### Seed the Database
+```bash
 npm run seed
+```
 
 ### Start Development Server (Hot Reload)
+```bash
 npm run dev
+```
 
 The server will start at `http://localhost:3001`.
 
 ### Start Production Server (Non-Hot Reload)
+```bash
 npm start
+```
 
 ---
 
@@ -97,26 +105,34 @@ npm start
 We use **Vitest** and **Supertest** to execute full integration tests across all 5 CRUD operations, boundary conditions, input validation, and pagination.
 
 ### Run the test suite:
+```bash
 npm test
+```
 
 ### Or run once without watch mode:
+```bash
 npm run test:run
+```
 
 ---
 
-# Bonus Features
+## Bonus Features
 
-## 1. Pagination
+### 1. Pagination
 - Supports `GET /api/products?page=1&limit=5` with response metadata (`totalItems`, `totalPages`, `page`, `limit`).
 
-## 2. Docker Containerization
+### 2. Docker Containerization
 A production-ready [Dockerfile](./Dockerfile) and [.dockerignore](./.dockerignore) are included for containerized deployment.
 
-### Build the Docker Image
-`docker build -t macky-merch-api .`
+#### Build the Docker Image
+```bash
+docker build -t macky-merch-api .
+```
 
-### Run the Container (detached mode, port 3001)
+#### Run the Container (detached mode, port 3001)
+```bash
 docker run -d -p 3001:3001 --name macky-api macky-merch-api
+```
 
 #### Container Management & Logs
 ```bash
@@ -137,28 +153,28 @@ docker rm -f macky-api
 
 ## Architectural Explanation
 
-### 1. Why this Folder Structure?
-The project adheres to a clean separation of concerns:
-- **`config/`**: Centralizes database configuration and connection handling. SQLite parameters like WAL mode and table creation scripts reside here, decoupling infrastructure from application business logic.
-- **`src/schemas.ts`**: Centralized data validation layer using Zod. By defining input validation schemas and inferring TypeScript types directly from them, runtime validation and compile-time type safety remain unified in a single source of truth.
-- **`src/routes/`**: Handles HTTP request routing, parameter extraction, response serialization, and error mapping.
-- **`src/app.ts` vs `src/server.ts`**: Separation of the Express app instance (`app.ts`) from the HTTP listener (`server.ts`) allows Supertest to import `app.ts` directly during test runs without binding to an active network port, preventing port collisions in CI/CD.
-- **`src/tests/`**: Automated test suites mirroring API behavior.
+### 1. Layered Architecture & Separation of Concerns
+Originally, the prototype logic resided inside a single `app.ts`. To ensure scalability, testability, and clean code standards, the application was refactored into distinct architectural layers:
+- **Routes (`/routes`)**: Purely responsible for URL routing and delegating endpoints to controllers.
+- **Controllers (`/controllers`)**: Manages the HTTP request/response lifecycle, status codes, and input payload validation via Zod.
+- **Services (`/services`)**: Encapsulates core business logic and database interactions, isolated from HTTP-specific objects (`req`, `res`).
+- **Middleware (`/middleware`)**: Centralized error handling and cross-cutting concerns.
+- **Schemas (`/schemas`)**: Single source of truth for runtime validation schemas and inferred TypeScript types.
 
-### 2. Why SQLite (`better-sqlite3`)?
-- **Zero Configuration & Embedded Simplicity**: SQLite requires no external daemon, container, or credentials setup, making the repository fully self-contained and reproducible across any developer environment.
-- **ACID Compliance & Relational Integrity**: Provides transactional guarantees and SQL constraints (`CHECK(price > 0)`, `CHECK(stock >= 0)`).
-- **High Performance Synchronous I/O**: `better-sqlite3` uses direct V8 C++ bindings that outperform asynchronous SQLite drivers while significantly reducing async overhead and locking issues.
-- **WAL Mode (Write-Ahead Logging)**: Configured with `PRAGMA journal_mode = WAL`, allowing concurrent readers without blocking writes.
+### 2. Database Selection: SQLite (`better-sqlite3`)
+- **Zero-latency embedded database**: Self-contained with zero external database server setup required.
+- **Synchronous execution & speed**: `better-sqlite3` is significantly faster than standard `sqlite3` and avoids promise/callback overhead for local queries.
+- **Write-Ahead Logging (WAL)**: Enabled to allow concurrent readers without blocking write operations.
+- **Prepared Statements**: Used for all parameterized SQL queries to prevent SQL injection vulnerabilities.
 
 ---
 
 ## Challenges Faced & Solutions
 
-### Challenge 1: Dynamic Parameterized SQL for Partial `PUT` Updates
-- **Problem**: In a RESTful `PUT` endpoint that accepts any subset of attributes for partial updates, dynamically constructing SQL statements can easily lead to SQL injection vulnerabilities or brittle string concatenation if not carefully handled.
-- **Solution**: Dynamically generated the `SET` clauses by mapping the validated keys of the request body into named parameter placeholders (e.g. `price = @price, stock = @stock`) and passing the combined sanitized object `{ ...data, id }` to `better-sqlite3`'s statement executor. This preserved strict parameterized query protection while maintaining flexibility.
+### 1. Adopting Vitest & Integration Testing with Supertest
+- **Challenge**: Transitioning to Vitest for backend testing and ensuring HTTP endpoints, query parameters, and boundary conditions were thoroughly tested.
+- **Solution**: Implemented end-to-end integration tests using `supertest` to simulate HTTP requests against Express routes. Structured test suites covering happy paths, validation failures (400), non-existent resources (404), and pagination edge cases.
 
-### Challenge 2: Test Suite Isolation and Ephemeral State
-- **Problem**: When running integration tests with a file-backed SQLite database, previous test executions or seed data could contaminate subsequent test assertions (e.g. total count assertions on `GET /api/products`).
-- **Solution**: Implemented a `beforeEach` database cleanup hook in `src/tests/db.spec.ts` using `DELETE FROM products`. Each test inserts its own required fixtures, ensuring complete test isolation and deterministic results.
+### 2. Transitioning from Monolith to Scalable Layered Structure
+- **Challenge**: Determining an optimal folder structure that separates HTTP transport from business logic while avoiding circular dependencies and tight coupling.
+- **Solution**: Studied established Node.js/Express design patterns and R&D codebase conventions to separate responsibilities cleanly across Controllers, Services, and validation Schemas.
