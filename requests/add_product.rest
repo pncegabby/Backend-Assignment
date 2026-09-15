@@ -1,0 +1,34 @@
+POST http://localhost:3001/api/products
+Content-Type: application/json
+
+{
+    "name": "New",
+    "description": "Compact mechanical keyboard with brown switches",
+    "price": 4999,
+    "stock": 15,
+    "category": "Peripherals",
+    "imageUrl": "https://example.com/keyboard.jpg",
+    "availableUntil": "2026-12-31T23:59:00Z"
+}
+
+### Incomplete
+POST http://localhost:3001/api/products
+Content-Type: application/json
+
+{
+    "name": "Incomplete",
+    "price": 4999,
+    "stock": 15,
+    "category": "Peripherals"
+}
+
+### Invalid
+POST http://localhost:3001/api/products
+Content-Type: application/json
+
+{
+    "name": 12,
+    "price": 4999,
+    "stock": 15,
+    "category": "Peripherals"
+}

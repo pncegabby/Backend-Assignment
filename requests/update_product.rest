@@ -1,0 +1,8 @@
+PUT http://localhost:3001/api/products/00fb5182-30d2-4562-91bb-d53bdd1fbbe4
+Content-Type: application/json
+
+{
+    "name": "Modified",
+    "description": "Should be modified",
+    "stock": 2000
+}

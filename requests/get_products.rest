@@ -1,0 +1,9 @@
+### Get ALL products
+GET http://localhost:3001/api/products
+
+
+### Get one product (id)
+GET http://localhost:3001/api/products/replace-with-id
+
+### Pagination
+GET http://localhost:3001/api/products?page=2&limit=2
